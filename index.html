@@ -161,7 +161,7 @@
         <div class="stat telat"><p>Terlambat</p><h3 id="telat">0</h3></div>
       </div>
 
-      <h3 class="history-title">📌 Detail Tanggal & Kegiatan (Hadir, Izin, Alpha)</h3>
+      <h3 class="history-title">📌 Detail Ketidakhadiran (Izin & Alpha per Divisi)</h3>
       <div id="detailDivisiContainer"></div>
 
       <h3 class="history-title">⏰ Riwayat Tanggal Keterlambatan</h3>
@@ -179,6 +179,8 @@
 
 <script>
 const GAS_API_URL = "https://script.google.com/macros/s/AKfycby3u8afQzMr5IEBjTM7zH46BQePsgKC8Tp-LBL8yWh_OL7cnqnptFqfppwmHDtH7BEq/exec";
+
+let currentStudentData = null;
 
 function toggleTheme() {
   document.body.classList.toggle('dark');
@@ -304,6 +306,8 @@ function cari() {
         return;
       }
 
+      currentStudentData = data;
+
       document.getElementById('pesan').style.display = 'none';
       document.getElementById('namaHasil').textContent = data.nama;
       document.getElementById('prodi').textContent = data.prodi || '-';
@@ -320,11 +324,13 @@ function cari() {
       badge.textContent = grade.name;
       badge.className = 'grade ' + grade.cls;
 
-      // Render Table Rincian Hadir, Izin, Alpha Per Divisi
+      // Filter Dashboard: Tampilkan hanya Izin, Alpha, & Terlambat
       const divContainer = document.getElementById('detailDivisiContainer');
       divContainer.innerHTML = '';
 
-      if (data.detailDivisi && data.detailDivisi.length > 0) {
+      const nonHadirList = (data.detailDivisi || []).filter(item => item.status !== 'Hadir');
+
+      if (nonHadirList.length > 0) {
         let tableHtml = `<table class="detail-table">
           <thead>
             <tr>
@@ -336,10 +342,9 @@ function cari() {
           </thead>
           <tbody>`;
 
-        data.detailDivisi.forEach(item => {
-          let badgeClass = 'badge-hadir';
-          if (item.status === 'Alpha') badgeClass = 'badge-alpha';
-          else if (item.status === 'Izin') badgeClass = 'badge-izin';
+        nonHadirList.forEach(item => {
+          let badgeClass = 'badge-alpha';
+          if (item.status === 'Izin') badgeClass = 'badge-izin';
           else if (item.status === 'Terlambat') badgeClass = 'badge-telat';
 
           tableHtml += `<tr>
@@ -353,7 +358,7 @@ function cari() {
         tableHtml += `</tbody></table>`;
         divContainer.innerHTML = tableHtml;
       } else {
-        divContainer.innerHTML = `<p class="empty-history">Belum ada riwayat kegiatan.</p>`;
+        divContainer.innerHTML = `<p class="empty-history">Tidak ada catatan Izin atau Alpha di seluruh divisi.</p>`;
       }
 
       // Render Riwayat Tanggal Telat Rekap
@@ -384,79 +389,135 @@ function cari() {
     });
 }
 
-// GENERATE PDF BERSIH BERFORMAT DOKUMEN RESMI
+// GENERATE PDF BERSIH BERFORMAT DOKUMEN RESMI (FIXED BLANK PAGE)
 function downloadPDF() {
-  const namaMhs = document.getElementById('namaHasil').textContent.trim();
-  const prodiMhs = document.getElementById('prodi').textContent.trim();
-  const totalHadir = document.getElementById('hadir').textContent;
-  const totalIzin = document.getElementById('izin').textContent;
-  const totalAlpha = document.getElementById('alpha').textContent;
-  const totalTelat = document.getElementById('telat').textContent;
-  const tableContent = document.getElementById('detailDivisiContainer').innerHTML;
-  const telatContent = document.getElementById('tanggal').innerHTML;
+  if (!currentStudentData) return;
 
+  const data = currentStudentData;
+  const namaMhs = data.nama;
+  const prodiMhs = data.prodi || '-';
+
+  // Susun tabel lengkap (Hadir, Izin, Alpha) khusus untuk PDF
+  let fullTableHtml = '';
+  if (data.detailDivisi && data.detailDivisi.length > 0) {
+    fullTableHtml = `<table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px;">
+      <thead>
+        <tr style="background: #f1f5f9; color: #1e293b;">
+          <th style="padding: 6px; border: 1px solid #cbd5e1; text-align: left;">Divisi</th>
+          <th style="padding: 6px; border: 1px solid #cbd5e1; text-align: left;">Kegiatan / Sheet</th>
+          <th style="padding: 6px; border: 1px solid #cbd5e1; text-align: left;">Pertemuan / Tanggal</th>
+          <th style="padding: 6px; border: 1px solid #cbd5e1; text-align: left;">Status</th>
+        </tr>
+      </thead>
+      <tbody>`;
+
+    data.detailDivisi.forEach(item => {
+      let bgStyle = 'background: #dcfce7; color: #15803d;'; // Hadir
+      if (item.status === 'Alpha') bgStyle = 'background: #fee2e2; color: #b91c1c;';
+      else if (item.status === 'Izin') bgStyle = 'background: #fef3c7; color: #92400e;';
+      else if (item.status === 'Terlambat') bgStyle = 'background: #ffedd5; color: #c2410c;';
+
+      fullTableHtml += `<tr>
+        <td style="padding: 6px; border: 1px solid #cbd5e1;"><strong>${item.divisi}</strong></td>
+        <td style="padding: 6px; border: 1px solid #cbd5e1;">${item.kegiatan}</td>
+        <td style="padding: 6px; border: 1px solid #cbd5e1;">${item.pertemuan}</td>
+        <td style="padding: 6px; border: 1px solid #cbd5e1;"><span style="padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 10px; ${bgStyle}">${item.status}</span></td>
+      </tr>`;
+    });
+
+    fullTableHtml += `</tbody></table>`;
+  } else {
+    fullTableHtml = `<p style="font-size: 12px; color: #64748b;">Belum ada riwayat kegiatan.</p>`;
+  }
+
+  let telatHtml = '';
+  if (data.tanggalTelat && data.tanggalTelat.length > 0) {
+    telatHtml = `<ol style="padding-left: 20px; font-size: 11px; color: #374151; line-height: 1.6;">`;
+    data.tanggalTelat.forEach(tgl => {
+      telatHtml += `<li>${tgl}</li>`;
+    });
+    telatHtml += `</ol>`;
+  } else {
+    telatHtml = `<p style="font-size: 12px; color: #64748b;">Tidak ada riwayat keterlambatan.</p>`;
+  }
+
+  // Buat kontainer cetak dan tempel sementara di body
   const container = document.createElement('div');
-  container.style.padding = '25px';
+  container.id = 'pdfTempContainer';
+  container.style.position = 'absolute';
+  container.style.left = '-9999px';
+  container.style.top = '-9999px';
+  container.style.width = '750px';
+  container.style.padding = '20px';
   container.style.fontFamily = 'Arial, sans-serif';
   container.style.color = '#111827';
   container.style.background = '#ffffff';
 
   container.innerHTML = `
-    <div style="text-align: center; border-bottom: 2px solid #102d50; padding-bottom: 12px; margin-bottom: 20px;">
-      <h2 style="color: #102d50; margin: 0; font-size: 18px;">UNIVERSITAS PAMULANG - DUTA UPZ</h2>
-      <p style="margin: 4px 0 0 0; font-size: 13px; color: #4b5563;">Laporan Rekapitulasi Presensi Individual Mahasiswa</p>
+    <div style="text-align: center; border-bottom: 2px solid #102d50; padding-bottom: 8px; margin-bottom: 15px;">
+      <h2 style="color: #102d50; margin: 0; font-size: 16px;">UNIVERSITAS PAMULANG - DUTA UPZ</h2>
+      <p style="margin: 2px 0 0 0; font-size: 12px; color: #4b5563;">Laporan Rekapitulasi Presensi Individual Mahasiswa</p>
     </div>
 
-    <table style="width: 100%; margin-bottom: 15px; font-size: 13px; border-collapse: collapse;">
+    <table style="width: 100%; margin-bottom: 12px; font-size: 12px; border-collapse: collapse;">
       <tr>
-        <td style="padding: 4px 0; width: 120px; font-weight: bold;">Nama Mahasiswa</td>
-        <td style="padding: 4px 0;">: ${namaMhs}</td>
+        <td style="padding: 3px 0; width: 120px; font-weight: bold;">Nama Mahasiswa</td>
+        <td style="padding: 3px 0;">: ${namaMhs}</td>
       </tr>
       <tr>
-        <td style="padding: 4px 0; font-weight: bold;">Program Studi</td>
-        <td style="padding: 4px 0;">: ${prodiMhs}</td>
+        <td style="padding: 3px 0; font-weight: bold;">Program Studi</td>
+        <td style="padding: 3px 0;">: ${prodiMhs}</td>
       </tr>
     </table>
 
-    <div style="display: flex; justify-content: space-between; margin-bottom: 20px; text-align: center;">
-      <div style="border: 1px solid #e5e7eb; padding: 10px; width: 23%; border-radius: 6px; background: #f0fdf4;">
-        <span style="font-size: 11px; color: #166534; font-weight: bold;">HADIR</span>
-        <h3 style="margin: 5px 0 0 0; color: #166534; font-size: 20px;">${totalHadir}</h3>
-      </div>
-      <div style="border: 1px solid #e5e7eb; padding: 10px; width: 23%; border-radius: 6px; background: #fefce8;">
-        <span style="font-size: 11px; color: #854d0e; font-weight: bold;">IZIN</span>
-        <h3 style="margin: 5px 0 0 0; color: #854d0e; font-size: 20px;">${totalIzin}</h3>
-      </div>
-      <div style="border: 1px solid #e5e7eb; padding: 10px; width: 23%; border-radius: 6px; background: #fef2f2;">
-        <span style="font-size: 11px; color: #991b1b; font-weight: bold;">ALPHA</span>
-        <h3 style="margin: 5px 0 0 0; color: #991b1b; font-size: 20px;">${totalAlpha}</h3>
-      </div>
-      <div style="border: 1px solid #e5e7eb; padding: 10px; width: 23%; border-radius: 6px; background: #fff7ed;">
-        <span style="font-size: 11px; color: #9a3412; font-weight: bold;">TERLAMBAT</span>
-        <h3 style="margin: 5px 0 0 0; color: #9a3412; font-size: 20px;">${totalTelat}</h3>
-      </div>
-    </div>
+    <table style="width: 100%; margin-bottom: 15px; text-align: center; border-collapse: collapse;">
+      <tr>
+        <td style="width: 24%; padding: 8px; border: 1px solid #e5e7eb; background: #f0fdf4; border-radius: 4px;">
+          <span style="font-size: 10px; color: #166534; font-weight: bold;">HADIR</span>
+          <div style="font-size: 18px; color: #166534; font-weight: bold; margin-top: 2px;">${data.hadir}</div>
+        </td>
+        <td style="width: 1.33%;"></td>
+        <td style="width: 24%; padding: 8px; border: 1px solid #e5e7eb; background: #fefce8; border-radius: 4px;">
+          <span style="font-size: 10px; color: #854d0e; font-weight: bold;">IZIN</span>
+          <div style="font-size: 18px; color: #854d0e; font-weight: bold; margin-top: 2px;">${data.izin}</div>
+        </td>
+        <td style="width: 1.33%;"></td>
+        <td style="width: 24%; padding: 8px; border: 1px solid #e5e7eb; background: #fef2f2; border-radius: 4px;">
+          <span style="font-size: 10px; color: #991b1b; font-weight: bold;">ALPHA</span>
+          <div style="font-size: 18px; color: #991b1b; font-weight: bold; margin-top: 2px;">${data.alpha}</div>
+        </td>
+        <td style="width: 1.33%;"></td>
+        <td style="width: 24%; padding: 8px; border: 1px solid #e5e7eb; background: #fff7ed; border-radius: 4px;">
+          <span style="font-size: 10px; color: #9a3412; font-weight: bold;">TERLAMBAT</span>
+          <div style="font-size: 18px; color: #9a3412; font-weight: bold; margin-top: 2px;">${data.telat}</div>
+        </td>
+      </tr>
+    </table>
 
-    <h4 style="font-size: 14px; margin-bottom: 8px; color: #102d50;">📌 Detail Kehadiran / Ketidakhadiran per Divisi & Pertemuan</h4>
-    <div style="margin-bottom: 20px;">${tableContent}</div>
+    <h4 style="font-size: 13px; margin-bottom: 6px; color: #102d50;">📌 Detail Seluruh Presensi (Hadir, Izin, Alpha) per Divisi</h4>
+    <div style="margin-bottom: 15px;">${fullTableHtml}</div>
 
-    <h4 style="font-size: 14px; margin-bottom: 8px; color: #102d50;">⏰ Riwayat Tanggal Keterlambatan</h4>
-    <div>${telatContent}</div>
+    <h4 style="font-size: 13px; margin-bottom: 6px; color: #102d50;">⏰ Riwayat Tanggal Keterlambatan</h4>
+    <div>${telatHtml}</div>
 
-    <div style="margin-top: 30px; text-align: right; font-size: 11px; color: #6b7280;">
+    <div style="margin-top: 20px; text-align: right; font-size: 10px; color: #6b7280;">
       Dicetak secara otomatis pada ${new Date().toLocaleDateString('id-ID')}
     </div>
   `;
 
+  document.body.appendChild(container);
+
   const opt = {
-    margin:       [0.4, 0.4, 0.4, 0.4],
+    margin:       [0.3, 0.3, 0.3, 0.3],
     filename:     `Rekap_Absensi_${namaMhs.replace(/\s+/g, '_')}.pdf`,
     image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas:  { scale: 2, useCORS: true },
+    html2canvas:  { scale: 2, useCORS: true, logging: false },
     jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
   };
 
-  html2pdf().set(opt).from(container).save();
+  html2pdf().set(opt).from(container).save().then(() => {
+    document.body.removeChild(container);
+  });
 }
 
 window.addEventListener('load', loadLeaderboard);
