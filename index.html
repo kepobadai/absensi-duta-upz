@@ -173,6 +173,9 @@
       <a class="sheet-link" id="sheetLink" href="#" target="_blank">Buka Spreadsheet Absensi ↗</a>
     </div>
   </section>
+
+  <!-- AREA WADAH TEMPORER KHUSUS GENERATE PDF -->
+  <div id="pdfPrintArea" style="display: none; background: #ffffff; color: #111827; padding: 20px; font-family: Arial, sans-serif;"></div>
 </main>
 
 <footer>Sistem Informasi Absensi DUTA UPZ</footer>
@@ -387,7 +390,7 @@ function cari() {
     });
 }
 
-// GENERATE PDF FIX RENDERING (BEBAS BLANK PAGE DENGAN JEDA RENDER 350MS)
+// GENERATE PDF 100% BEBAS BLANK DENGAN SCROLL-LOCK ZERO
 function downloadPDF() {
   if (!currentStudentData) return;
 
@@ -438,21 +441,9 @@ function downloadPDF() {
     telatHtml = `<p style="font-size: 12px; color: #64748b;">Tidak ada riwayat keterlambatan.</p>`;
   }
 
-  const container = document.createElement('div');
-  container.id = 'pdfRenderContainer';
-  container.style.position = 'absolute';
-  container.style.top = '0';
-  container.style.left = '0';
-  container.style.width = '750px';
-  container.style.padding = '20px';
-  container.style.boxSizing = 'border-box';
-  container.style.fontFamily = 'Arial, sans-serif';
-  container.style.color = '#111827';
-  container.style.background = '#ffffff';
-  container.style.zIndex = '99999';
-
-  container.innerHTML = `
-    <div style="width: 100%; background: #ffffff;">
+  const pdfArea = document.getElementById('pdfPrintArea');
+  pdfArea.innerHTML = `
+    <div style="width: 100%; max-width: 700px; margin: 0 auto; background: #ffffff; color: #111827;">
       <div style="text-align: center; border-bottom: 2px solid #102d50; padding-bottom: 8px; margin-bottom: 15px;">
         <h2 style="color: #102d50; margin: 0; font-size: 16px;">UNIVERSITAS PAMULANG - DUTA UPZ</h2>
         <p style="margin: 2px 0 0 0; font-size: 12px; color: #4b5563;">Laporan Rekapitulasi Presensi Individual Mahasiswa</p>
@@ -505,28 +496,24 @@ function downloadPDF() {
     </div>
   `;
 
-  document.body.appendChild(container);
+  pdfArea.style.display = 'block';
 
-  setTimeout(() => {
-    const opt = {
-      margin:       [0.3, 0.3, 0.3, 0.3],
-      filename:     `Rekap_Absensi_${namaMhs.replace(/\s+/g, '_')}.pdf`,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, scrollX: 0, scrollY: 0, windowWidth: 800 },
-      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-    };
+  const opt = {
+    margin:       [0.3, 0.3, 0.3, 0.3],
+    filename:     `Rekap_Absensi_${namaMhs.replace(/\s+/g, '_')}.pdf`,
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0 },
+    jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+  };
 
-    html2pdf().set(opt).from(container).save().then(() => {
-      if (document.body.contains(container)) {
-        document.body.removeChild(container);
-      }
-    }).catch(err => {
-      console.error(err);
-      if (document.body.contains(container)) {
-        document.body.removeChild(container);
-      }
-    });
-  }, 350);
+  html2pdf().set(opt).from(pdfArea).save().then(() => {
+    pdfArea.style.display = 'none';
+    pdfArea.innerHTML = '';
+  }).catch(err => {
+    console.error(err);
+    pdfArea.style.display = 'none';
+    pdfArea.innerHTML = '';
+  });
 }
 
 window.addEventListener('load', loadLeaderboard);
