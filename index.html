@@ -324,7 +324,6 @@ function cari() {
       badge.textContent = grade.name;
       badge.className = 'grade ' + grade.cls;
 
-      // Filter Dashboard: Tampilkan hanya Izin, Alpha, & Terlambat
       const divContainer = document.getElementById('detailDivisiContainer');
       divContainer.innerHTML = '';
 
@@ -361,7 +360,6 @@ function cari() {
         divContainer.innerHTML = `<p class="empty-history">Tidak ada catatan Izin atau Alpha di seluruh divisi.</p>`;
       }
 
-      // Render Riwayat Tanggal Telat Rekap
       const tanggal = document.getElementById('tanggal');
       tanggal.innerHTML = '';
       if (data.tanggalTelat && data.tanggalTelat.length > 0) {
@@ -389,7 +387,7 @@ function cari() {
     });
 }
 
-// GENERATE PDF FIX RENDERING (BEBAS BLANK PAGE)
+// GENERATE PDF FIX RENDERING (BEBAS BLANK PAGE DENGAN JEDA RENDER 350MS)
 function downloadPDF() {
   if (!currentStudentData) return;
 
@@ -397,7 +395,6 @@ function downloadPDF() {
   const namaMhs = data.nama;
   const prodiMhs = data.prodi || '-';
 
-  // Susun tabel lengkap (Hadir, Izin, Alpha) khusus untuk PDF
   let fullTableHtml = '';
   if (data.detailDivisi && data.detailDivisi.length > 0) {
     fullTableHtml = `<table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 11px; background: #ffffff;">
@@ -412,7 +409,7 @@ function downloadPDF() {
       <tbody>`;
 
     data.detailDivisi.forEach(item => {
-      let bgStyle = 'background: #dcfce7; color: #15803d;'; // Hadir
+      let bgStyle = 'background: #dcfce7; color: #15803d;';
       if (item.status === 'Alpha') bgStyle = 'background: #fee2e2; color: #b91c1c;';
       else if (item.status === 'Izin') bgStyle = 'background: #fef3c7; color: #92400e;';
       else if (item.status === 'Terlambat') bgStyle = 'background: #ffedd5; color: #c2410c;';
@@ -441,23 +438,21 @@ function downloadPDF() {
     telatHtml = `<p style="font-size: 12px; color: #64748b;">Tidak ada riwayat keterlambatan.</p>`;
   }
 
-  // Wadah kontainer sementara yang ditampilkan di depan layar saat proses capture
   const container = document.createElement('div');
-  container.style.position = 'fixed';
+  container.id = 'pdfRenderContainer';
+  container.style.position = 'absolute';
   container.style.top = '0';
   container.style.left = '0';
-  container.style.width = '100vw';
-  container.style.height = '100vh';
-  container.style.zIndex = '99999';
+  container.style.width = '750px';
   container.style.padding = '20px';
   container.style.boxSizing = 'border-box';
   container.style.fontFamily = 'Arial, sans-serif';
   container.style.color = '#111827';
   container.style.background = '#ffffff';
-  container.style.overflow = 'auto';
+  container.style.zIndex = '99999';
 
   container.innerHTML = `
-    <div style="max-width: 750px; margin: 0 auto; background: #ffffff;">
+    <div style="width: 100%; background: #ffffff;">
       <div style="text-align: center; border-bottom: 2px solid #102d50; padding-bottom: 8px; margin-bottom: 15px;">
         <h2 style="color: #102d50; margin: 0; font-size: 16px;">UNIVERSITAS PAMULANG - DUTA UPZ</h2>
         <p style="margin: 2px 0 0 0; font-size: 12px; color: #4b5563;">Laporan Rekapitulasi Presensi Individual Mahasiswa</p>
@@ -512,20 +507,26 @@ function downloadPDF() {
 
   document.body.appendChild(container);
 
-  const opt = {
-    margin:       [0.3, 0.3, 0.3, 0.3],
-    filename:     `Rekap_Absensi_${namaMhs.replace(/\s+/g, '_')}.pdf`,
-    image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas:  { scale: 2, useCORS: true, scrollX: 0, scrollY: 0 },
-    jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
-  };
+  setTimeout(() => {
+    const opt = {
+      margin:       [0.3, 0.3, 0.3, 0.3],
+      filename:     `Rekap_Absensi_${namaMhs.replace(/\s+/g, '_')}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true, scrollX: 0, scrollY: 0, windowWidth: 800 },
+      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
 
-  html2pdf().set(opt).from(container).save().then(() => {
-    document.body.removeChild(container);
-  }).catch(err => {
-    console.error(err);
-    document.body.removeChild(container);
-  });
+    html2pdf().set(opt).from(container).save().then(() => {
+      if (document.body.contains(container)) {
+        document.body.removeChild(container);
+      }
+    }).catch(err => {
+      console.error(err);
+      if (document.body.contains(container)) {
+        document.body.removeChild(container);
+      }
+    });
+  }, 350);
 }
 
 window.addEventListener('load', loadLeaderboard);
