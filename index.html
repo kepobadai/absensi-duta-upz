@@ -5,6 +5,10 @@
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sistem Informasi Absensi DUTA UPZ</title>
+
+  <!-- HTML2PDF Library untuk Generate PDF di Browser -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -70,7 +74,35 @@
     .badge-telat { background: #ffedd5; color: #c2410c; }
     .history-list { padding-left: 22px; color: var(--muted); font-size: 13px; line-height: 2; }
     .empty-history { color: var(--muted); font-size: 13px; }
-    .sheet-link { display: inline-block; margin-top: 20px; color: var(--primary); text-decoration: none; font-size: 13px; font-weight: bold; }
+
+    .action-buttons {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    .pdf-button {
+      background: #16a34a;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: bold;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .pdf-button:hover { background: #15803d; }
+    .sheet-link {
+      display: inline-block;
+      color: var(--primary);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: bold;
+    }
     .sheet-link:hover { text-decoration: underline; }
     footer { text-align: center; padding: 25px; color: var(--muted); font-size: 12px; }
     @media (max-width: 700px) {
@@ -143,31 +175,36 @@
     <div id="pesan"></div>
   </section>
 
-  <!-- HASIL PENCARIAN -->
+  <!-- HASIL PENCARIAN (AREA DIPRINT KE PDF) -->
   <section class="result-card" id="hasil">
-    <div class="result-header">
-      <div>
-        <h2 id="namaHasil">-</h2>
-        <p id="prodi">-</p>
+    <div id="pdfContent">
+      <div class="result-header">
+        <div>
+          <h2 id="namaHasil">-</h2>
+          <p id="prodi">-</p>
+        </div>
+        <span class="grade" id="hasilGrade">-</span>
       </div>
-      <span class="grade" id="hasilGrade">-</span>
+
+      <div class="stats">
+        <div class="stat hadir"><p>Hadir</p><h3 id="hadir">0</h3></div>
+        <div class="stat izin"><p>Izin</p><h3 id="izin">0</h3></div>
+        <div class="stat alpha"><p>Alpha</p><h3 id="alpha">0</h3></div>
+        <div class="stat telat"><p>Terlambat</p><h3 id="telat">0</h3></div>
+      </div>
+
+      <!-- RINCIAN BREAKDOWN DIVISI & PERTEMUAN -->
+      <h3 class="history-title">📌 Rincian Ketidakhadiran per Divisi & Pertemuan</h3>
+      <div id="detailDivisiContainer"></div>
+
+      <h3 class="history-title">⏰ Riwayat Keterlambatan Rekap</h3>
+      <div id="tanggal"></div>
     </div>
 
-    <div class="stats">
-      <div class="stat hadir"><p>Hadir</p><h3 id="hadir">0</h3></div>
-      <div class="stat izin"><p>Izin</p><h3 id="izin">0</h3></div>
-      <div class="stat alpha"><p>Alpha</p><h3 id="alpha">0</h3></div>
-      <div class="stat telat"><p>Terlambat</p><h3 id="telat">0</h3></div>
+    <div class="action-buttons">
+      <button class="pdf-button" onclick="downloadPDF()">📥 Download Rekap (PDF)</button>
+      <a class="sheet-link" id="sheetLink" href="#" target="_blank">Buka Spreadsheet Absensi ↗</a>
     </div>
-
-    <!-- RINCIAN BREAKDOWN DIVISI & PERTEMUAN -->
-    <h3 class="history-title">📌 Rincian Ketidakhadiran per Divisi & Pertemuan</h3>
-    <div id="detailDivisiContainer"></div>
-
-    <h3 class="history-title">⏰ Riwayat Keterlambatan Rekap</h3>
-    <div id="tanggal"></div>
-
-    <a class="sheet-link" id="sheetLink" href="#" target="_blank">Buka Spreadsheet Absensi ↗</a>
   </section>
 </main>
 
@@ -374,6 +411,22 @@ function cari() {
       tampilkanPesan('Terjadi kesalahan koneksi backend: ' + err.message);
       console.error(err);
     });
+}
+
+// FUNGSI UTAMA GENERATE & DOWNLOAD PDF INDIVIDU
+function downloadPDF() {
+  const element = document.getElementById('pdfContent');
+  const namaMhs = document.getElementById('namaHasil').textContent.trim().replace(/\s+/g, '_');
+  
+  const opt = {
+    margin:       [0.5, 0.5, 0.5, 0.5],
+    filename:     `Rekap_Absensi_${namaMhs}.pdf`,
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { scale: 2, useCORS: true },
+    jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+  };
+
+  html2pdf().set(opt).from(element).save();
 }
 
 window.addEventListener('load', loadLeaderboard);
