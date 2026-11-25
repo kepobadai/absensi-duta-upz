@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sistem Informasi Absensi DUTA UPZ</title>
 
-  <!-- HTML2PDF Library untuk Generate PDF di Browser -->
+  <!-- HTML2PDF Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
   <style>
@@ -69,51 +69,19 @@
     .detail-table th, .detail-table td { padding: 10px; border: 1px solid var(--border); text-align: left; }
     .detail-table th { background: var(--primary-soft); }
     .badge-status { padding: 4px 8px; border-radius: 6px; font-weight: bold; font-size: 11px; }
+    .badge-hadir { background: #dcfce7; color: #15803d; }
     .badge-alpha { background: #fee2e2; color: #b91c1c; }
     .badge-izin { background: #fef3c7; color: #92400e; }
     .badge-telat { background: #ffedd5; color: #c2410c; }
     .history-list { padding-left: 22px; color: var(--muted); font-size: 13px; line-height: 2; }
     .empty-history { color: var(--muted); font-size: 13px; }
 
-    .action-buttons {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      margin-top: 20px;
-      flex-wrap: wrap;
-    }
-    .pdf-button {
-      background: #16a34a;
-      color: white;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: bold;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
+    .action-buttons { display: flex; gap: 12px; align-items: center; margin-top: 20px; flex-wrap: wrap; }
+    .pdf-button { background: #16a34a; color: white; border: none; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
     .pdf-button:hover { background: #15803d; }
-    .sheet-link {
-      display: inline-block;
-      color: var(--primary);
-      text-decoration: none;
-      font-size: 13px;
-      font-weight: bold;
-    }
+    .sheet-link { display: inline-block; color: var(--primary); text-decoration: none; font-size: 13px; font-weight: bold; }
     .sheet-link:hover { text-decoration: underline; }
     footer { text-align: center; padding: 25px; color: var(--muted); font-size: 12px; }
-    @media (max-width: 700px) {
-      header { padding: 20px 5%; }
-      .header-title h1 { font-size: 16px; }
-      main { width: 92%; margin: 22px auto; }
-      .leaderboard { grid-template-columns: 1fr; }
-      .stats { grid-template-columns: repeat(2, 1fr); }
-      .search-form { flex-direction: column; }
-      .search-button { padding: 14px; }
-    }
   </style>
 </head>
 <body>
@@ -175,7 +143,7 @@
     <div id="pesan"></div>
   </section>
 
-  <!-- HASIL PENCARIAN (AREA DIPRINT KE PDF) -->
+  <!-- HASIL PENCARIAN -->
   <section class="result-card" id="hasil">
     <div id="pdfContent">
       <div class="result-header">
@@ -193,16 +161,15 @@
         <div class="stat telat"><p>Terlambat</p><h3 id="telat">0</h3></div>
       </div>
 
-      <!-- RINCIAN BREAKDOWN DIVISI & PERTEMUAN -->
-      <h3 class="history-title">📌 Rincian Ketidakhadiran per Divisi & Pertemuan</h3>
+      <h3 class="history-title">📌 Detail Tanggal & Kegiatan (Hadir, Izin, Alpha)</h3>
       <div id="detailDivisiContainer"></div>
 
-      <h3 class="history-title">⏰ Riwayat Keterlambatan Rekap</h3>
+      <h3 class="history-title">⏰ Riwayat Tanggal Keterlambatan</h3>
       <div id="tanggal"></div>
     </div>
 
     <div class="action-buttons">
-      <button class="pdf-button" onclick="downloadPDF()">📥 Download Rekap (PDF)</button>
+      <button class="pdf-button" onclick="downloadPDF()">📄 Download PDF Rekapan</button>
       <a class="sheet-link" id="sheetLink" href="#" target="_blank">Buka Spreadsheet Absensi ↗</a>
     </div>
   </section>
@@ -353,7 +320,7 @@ function cari() {
       badge.textContent = grade.name;
       badge.className = 'grade ' + grade.cls;
 
-      // Render Table Rincian Ketidakhadiran Per Divisi
+      // Render Table Rincian Hadir, Izin, Alpha Per Divisi
       const divContainer = document.getElementById('detailDivisiContainer');
       divContainer.innerHTML = '';
 
@@ -363,14 +330,18 @@ function cari() {
             <tr>
               <th>Divisi</th>
               <th>Kegiatan / Sheet</th>
-              <th>Pertemuan</th>
+              <th>Pertemuan / Tanggal</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody>`;
 
         data.detailDivisi.forEach(item => {
-          let badgeClass = item.status === 'Alpha' ? 'badge-alpha' : (item.status === 'Izin' ? 'badge-izin' : 'badge-telat');
+          let badgeClass = 'badge-hadir';
+          if (item.status === 'Alpha') badgeClass = 'badge-alpha';
+          else if (item.status === 'Izin') badgeClass = 'badge-izin';
+          else if (item.status === 'Terlambat') badgeClass = 'badge-telat';
+
           tableHtml += `<tr>
             <td><strong>${item.divisi}</strong></td>
             <td>${item.kegiatan}</td>
@@ -382,7 +353,7 @@ function cari() {
         tableHtml += `</tbody></table>`;
         divContainer.innerHTML = tableHtml;
       } else {
-        divContainer.innerHTML = `<p class="empty-history">Tidak ada catatan Alpha, Izin, atau Keterlambatan di seluruh divisi.</p>`;
+        divContainer.innerHTML = `<p class="empty-history">Belum ada riwayat kegiatan.</p>`;
       }
 
       // Render Riwayat Tanggal Telat Rekap
@@ -413,20 +384,79 @@ function cari() {
     });
 }
 
-// FUNGSI UTAMA GENERATE & DOWNLOAD PDF INDIVIDU
+// GENERATE PDF BERSIH BERFORMAT DOKUMEN RESMI
 function downloadPDF() {
-  const element = document.getElementById('pdfContent');
-  const namaMhs = document.getElementById('namaHasil').textContent.trim().replace(/\s+/g, '_');
-  
+  const namaMhs = document.getElementById('namaHasil').textContent.trim();
+  const prodiMhs = document.getElementById('prodi').textContent.trim();
+  const totalHadir = document.getElementById('hadir').textContent;
+  const totalIzin = document.getElementById('izin').textContent;
+  const totalAlpha = document.getElementById('alpha').textContent;
+  const totalTelat = document.getElementById('telat').textContent;
+  const tableContent = document.getElementById('detailDivisiContainer').innerHTML;
+  const telatContent = document.getElementById('tanggal').innerHTML;
+
+  const container = document.createElement('div');
+  container.style.padding = '25px';
+  container.style.fontFamily = 'Arial, sans-serif';
+  container.style.color = '#111827';
+  container.style.background = '#ffffff';
+
+  container.innerHTML = `
+    <div style="text-align: center; border-bottom: 2px solid #102d50; padding-bottom: 12px; margin-bottom: 20px;">
+      <h2 style="color: #102d50; margin: 0; font-size: 18px;">UNIVERSITAS PAMULANG - DUTA UPZ</h2>
+      <p style="margin: 4px 0 0 0; font-size: 13px; color: #4b5563;">Laporan Rekapitulasi Presensi Individual Mahasiswa</p>
+    </div>
+
+    <table style="width: 100%; margin-bottom: 15px; font-size: 13px; border-collapse: collapse;">
+      <tr>
+        <td style="padding: 4px 0; width: 120px; font-weight: bold;">Nama Mahasiswa</td>
+        <td style="padding: 4px 0;">: ${namaMhs}</td>
+      </tr>
+      <tr>
+        <td style="padding: 4px 0; font-weight: bold;">Program Studi</td>
+        <td style="padding: 4px 0;">: ${prodiMhs}</td>
+      </tr>
+    </table>
+
+    <div style="display: flex; justify-content: space-between; margin-bottom: 20px; text-align: center;">
+      <div style="border: 1px solid #e5e7eb; padding: 10px; width: 23%; border-radius: 6px; background: #f0fdf4;">
+        <span style="font-size: 11px; color: #166534; font-weight: bold;">HADIR</span>
+        <h3 style="margin: 5px 0 0 0; color: #166534; font-size: 20px;">${totalHadir}</h3>
+      </div>
+      <div style="border: 1px solid #e5e7eb; padding: 10px; width: 23%; border-radius: 6px; background: #fefce8;">
+        <span style="font-size: 11px; color: #854d0e; font-weight: bold;">IZIN</span>
+        <h3 style="margin: 5px 0 0 0; color: #854d0e; font-size: 20px;">${totalIzin}</h3>
+      </div>
+      <div style="border: 1px solid #e5e7eb; padding: 10px; width: 23%; border-radius: 6px; background: #fef2f2;">
+        <span style="font-size: 11px; color: #991b1b; font-weight: bold;">ALPHA</span>
+        <h3 style="margin: 5px 0 0 0; color: #991b1b; font-size: 20px;">${totalAlpha}</h3>
+      </div>
+      <div style="border: 1px solid #e5e7eb; padding: 10px; width: 23%; border-radius: 6px; background: #fff7ed;">
+        <span style="font-size: 11px; color: #9a3412; font-weight: bold;">TERLAMBAT</span>
+        <h3 style="margin: 5px 0 0 0; color: #9a3412; font-size: 20px;">${totalTelat}</h3>
+      </div>
+    </div>
+
+    <h4 style="font-size: 14px; margin-bottom: 8px; color: #102d50;">📌 Detail Kehadiran / Ketidakhadiran per Divisi & Pertemuan</h4>
+    <div style="margin-bottom: 20px;">${tableContent}</div>
+
+    <h4 style="font-size: 14px; margin-bottom: 8px; color: #102d50;">⏰ Riwayat Tanggal Keterlambatan</h4>
+    <div>${telatContent}</div>
+
+    <div style="margin-top: 30px; text-align: right; font-size: 11px; color: #6b7280;">
+      Dicetak secara otomatis pada ${new Date().toLocaleDateString('id-ID')}
+    </div>
+  `;
+
   const opt = {
-    margin:       [0.5, 0.5, 0.5, 0.5],
-    filename:     `Rekap_Absensi_${namaMhs}.pdf`,
+    margin:       [0.4, 0.4, 0.4, 0.4],
+    filename:     `Rekap_Absensi_${namaMhs.replace(/\s+/g, '_')}.pdf`,
     image:        { type: 'jpeg', quality: 0.98 },
     html2canvas:  { scale: 2, useCORS: true },
     jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
   };
 
-  html2pdf().set(opt).from(element).save();
+  html2pdf().set(opt).from(container).save();
 }
 
 window.addEventListener('load', loadLeaderboard);
